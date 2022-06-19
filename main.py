@@ -173,6 +173,14 @@ def consultaSensores():
     time.sleep(waitTime)
     client.publish("esp32/rasp", "gl2") #gpsLongitude
     time.sleep(waitTime)
+    client.publish("esp32/rasp", "ga") #angulo de rotação do robô
+    time.sleep(waitTime)
+    client.publish("esp32/rasp", "ax") #aceleração em X
+    time.sleep(waitTime)
+    client.publish("esp32/rasp", "ay") #aceleração em Y
+    time.sleep(waitTime)
+    client.publish("esp32/rasp", "az") #aceleração em Z
+    time.sleep(waitTime)
 
     #Set flatCaminhoLivre
     flagCaminhoLivre = True

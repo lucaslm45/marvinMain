@@ -1,14 +1,13 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <Ultrasonic.h>
 
 // Replace the next variables with your SSID/Password combination
-const char *ssid = "Ctba_Lucas";
-const char *password = "1020oeku";
+const char *ssid = "Jordana - NOVA FIBRA";
+const char *password = "ox7td34w";
 
 // Add your MQTT Broker IP address, example:
-const char *mqtt_server = "192.168.137.32";
+const char *mqtt_server = "192.168.3.22";
 int port = 1883;
 
 WiFiClient espClient;
@@ -51,8 +50,13 @@ char msg[50];
 #define MOTOR_4 4
 
 // --- Variáveis Globais ---
-short usSpeed = 100;     // default motor speed
-short usSpeedGiro = 190; // default motor speed Giro
+short usSpeed = 85;     // default motor speed
+short usSpeedGiro = 185; // default motor speed Giro
+short magicWheel1 = 70/usSpeed;
+short magicWheel2 = 70/usSpeed;
+short magicWheel3 = (usSpeed + 30)/usSpeed;
+short magicWheel4 = (usSpeed + 30)/usSpeed;
+
 unsigned short usMotor_Status = BRAKE;
 
 // --- Protótipo das Funções Auxiliares ---
@@ -109,7 +113,7 @@ void setup_wifi()
 
     while (WiFi.status() != WL_CONNECTED)
     {
-        delay(500);
+        delay(50);
         Serial.print(".");
     }
 
@@ -139,12 +143,36 @@ void callback(char *topic, byte *message, unsigned int length)
         moverRobo(messageTemp);
     }
 }
-
+void reconnect() {
+  // Loop until we're reconnected
+  Serial.println(client.state());
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect("ESP32Client")) {
+      Serial.println("connected");
+      // Subscribe
+      client.subscribe("esp32m/rasp");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+  Serial.print("Saiu: ");
+  Serial.println(client.state());
+}
 void loop()
 {
     if (!client.connected())
     {
         reconnect();
+    }
+    if(WiFi.status() != WL_CONNECTED)
+    {
+      setup_wifi();
     }
     client.loop();
 }
@@ -174,6 +202,7 @@ void moverRobo(String funcao)
         Serial.println("requisição inválida");
         break;
     }
+    client.publish("esp32/motor", "chegou");
 }
 int listaFuncao(String comando)
 {
@@ -203,24 +232,31 @@ int listaFuncao(String comando)
 void robot_forward()
 {
     Serial.println("Forward");
-    stopSeguro();
-    usMotor_Status = CW;
-    motorGo(MOTOR_1, usMotor_Status, usSpeed);
-    motorGo(MOTOR_2, usMotor_Status, usSpeed);
-    motorGo(MOTOR_3, usMotor_Status, usSpeed);
-    motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    if(usMotor_Status != CW)
+    {
+      stopSeguro();
+    
+      usMotor_Status = CW;
+      motorGo(MOTOR_1, usMotor_Status, usSpeed);
+      motorGo(MOTOR_2, usMotor_Status, usSpeed);
+      motorGo(MOTOR_3, usMotor_Status, usSpeed);
+      motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    }
 
 } // end robot forward
 
 void robot_backward()
 {
     Serial.println("Reverse");
-    stopSeguro();
-    usMotor_Status = CCW;
-    motorGo(MOTOR_1, usMotor_Status, usSpeed);
-    motorGo(MOTOR_2, usMotor_Status, usSpeed);
-    motorGo(MOTOR_3, usMotor_Status, usSpeed);
-    motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    if(usMotor_Status != CCW)
+    {
+      stopSeguro();
+      usMotor_Status = CCW;
+      motorGo(MOTOR_1, usMotor_Status, usSpeed);
+      motorGo(MOTOR_2, usMotor_Status, usSpeed);
+      motorGo(MOTOR_3, usMotor_Status, usSpeed);
+      motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    }
 } // end robot backward
 void robot_right(float angulo)
 {
@@ -285,6 +321,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
 {
     if (motor == MOTOR_1)
     {
+        pwm += magicWheel1;
         int s1 = S1M1, s2 = S2M1, pwmMotor = PWM1;
 
         if (direct == CCW)
@@ -307,6 +344,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
     }
     else if (motor == MOTOR_2)
     {
+        pwm += magicWheel2;
         int s1 = S1M2, s2 = S2M2, pwmMotor = PWM2;
 
         if (direct == CCW)
@@ -329,6 +367,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
     }
     else if (motor == MOTOR_3)
     {
+        pwm += magicWheel3;
         int s1 = S1M3, s2 = S2M3, pwmMotor = PWM3;
 
         if (direct == CCW)
@@ -351,6 +390,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
     }
     else if (motor == MOTOR_4)
     {
+        pwm += magicWheel4;
         int s1 = S1M4, s2 = S2M4, pwmMotor = PWM4;
 
         if (direct == CCW)

@@ -9,13 +9,15 @@
 #include <Ultrasonic.h>
 
 // Replace the next variables with your SSID/Password combination
-const char* ssid = "Ctba_Lucas";
-const char* password = "1020oeku";
+/*const char* ssid = "Ctba_Lucas";
+const char* password = "1020oeku";*/
+const char *ssid = "Jordana - NOVA FIBRA";
+const char *password = "ox7td34w";
 
 // Add your MQTT Broker IP address, example:
 //const char* mqtt_server = "192.168.1.144";
 //const char* mqtt_server = "mqtt://192.168.137.32";
-const char* mqtt_server = "192.168.137.32";
+const char *mqtt_server = "192.168.3.22";
 
 WiFiClient espClient;
 PubSubClient client(espClient);

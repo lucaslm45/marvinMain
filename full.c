@@ -258,19 +258,17 @@ void definirFuncao(String funcao)
     case 4:
         Serial.println("l1");
         // leitura dos sensores em metros
-        distancia = measure1.RangeMilliMeter/100;
+        distancia = measure1.RangeMilliMeter / 100;
         break;
     case 5:
         Serial.println("l2");
-        distancia = measure2.RangeMilliMeter/100;
+        distancia = measure2.RangeMilliMeter / 100;
         break;
     case 6:
         Serial.println("gl1");
-        distancia = ultrasonic2.read(CM);
         break;
     case 7:
         Serial.println("gl2");
-        distancia = ultrasonic2.read(CM);
         break;
     case 8:
         Serial.println("ga");
@@ -293,8 +291,15 @@ void definirFuncao(String funcao)
         return;
     }
 
-    // converte em string o valor de distância e salva na variável tempString
-    dtostrf(distancia, 5, 2, tempString);
+    if (!(funcao == "gl1" || funcao == "gl2"))
+    {
+        // converte em string o valor de distância e salva na variável tempString
+        dtostrf(distancia, 5, 2, tempString);
+    }
+    else
+    {
+        dtostrf(distancia, 8, 4, tempString);
+    }
     Serial.print("Distancia: ");
     Serial.println(tempString);
 

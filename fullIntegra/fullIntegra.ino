@@ -175,9 +175,12 @@ void setup_wifi()
 
 void callback(char *topic, byte *message, unsigned int length)
 {
+  /*
     Serial.print("Message arrived on topic: ");
     Serial.print(topic);
     Serial.print(". Message: ");
+    */
+    Serial.print(topic);
     String messageTemp;
 
     for (int i = 0; i < length; i++)
@@ -189,7 +192,7 @@ void callback(char *topic, byte *message, unsigned int length)
 
     if (String(topic) == "esp32/rasp")
     {
-        Serial.print("Changing output to ");
+        //Serial.print("Changing output to ");
         definirFuncao(messageTemp);
     }
 }
@@ -258,19 +261,17 @@ void definirFuncao(String funcao)
     case 4:
         Serial.println("l1");
         // leitura dos sensores em metros
-        distancia = measure1.RangeMilliMeter/100;
+        distancia = measure1.RangeMilliMeter;
         break;
     case 5:
         Serial.println("l2");
-        distancia = measure2.RangeMilliMeter/100;
+        distancia = measure2.RangeMilliMeter;
         break;
     case 6:
         Serial.println("gl1");
-        distancia = ultrasonic2.read(CM);
         break;
     case 7:
         Serial.println("gl2");
-        distancia = ultrasonic2.read(CM);
         break;
     case 8:
         Serial.println("ga");
@@ -292,9 +293,11 @@ void definirFuncao(String funcao)
         Serial.println("requisição inválida");
         return;
     }
-
+    Serial.print("Distancia: ");
+    Serial.print(distancia);
     // converte em string o valor de distância e salva na variável tempString
     dtostrf(distancia, 5, 2, tempString);
+    
     Serial.print("Distancia: ");
     Serial.println(tempString);
 

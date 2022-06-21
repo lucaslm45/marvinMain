@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 
@@ -14,6 +13,10 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 long lastMsg = 0;
 char msg[50];
+
+unsigned long previousMillis = 0;
+unsigned long interval = 30000;
+unsigned long currentMillis;
 
 #define delaySen 800
 
@@ -31,7 +34,7 @@ char msg[50];
 #define S2M3 19
 
 #define S1M4 2
-#define S2M4 4
+#define S2M4 4o
 
 // PWM
 #define PWM1 32
@@ -170,9 +173,15 @@ void loop()
     {
         reconnect();
     }
-    if(WiFi.status() != WL_CONNECTED)
+    currentMillis = millis();
+    // if WiFi is down, try reconnecting every CHECK_WIFI_TIME seconds
+    if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >= interval))
     {
-      setup_wifi();
+        Serial.print(millis());
+        Serial.println("Reconnecting to WiFi...");
+        WiFi.disconnect();
+        WiFi.reconnect();
+        previousMillis = currentMillis;
     }
     client.loop();
 }

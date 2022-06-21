@@ -361,8 +361,8 @@ while 1:
         print(ultrassom1)
         print(ultrassom2)
         print(ultrassom3)
-        print(laser1)
-        print(laser2)
+        # print(laser1)
+        # print(laser2)
         # print(angle)
 
          

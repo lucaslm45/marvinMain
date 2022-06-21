@@ -4,7 +4,9 @@ import paho.mqtt.client as mqtt
 import time
 from struct import *
 # from string import *
-broker = "192.168.3.22"
+# broker = "192.168.3.22"
+broker = "192.168.4.3"
+
 # broker="test.mosquitto.org"
 # publish Integers and floats
 port = 1883

@@ -1,36 +1,13 @@
-/*********
-  Rui Santos
-  Complete project details at https://randomnerdtutorials.com
-*********/
-
-#include <WiFi.h>
-#include <PubSubClient.h>
 #include <Ultrasonic.h>
 #include "Adafruit_VL53L0X.h"
 
-// Replace the next variables with your SSID/Password combination
-/*const char* ssid = "Ctba_Lucas";
-const char* password = "1020oeku";*/
-//const char *ssid = "Jordana - NOVA FIBRA";
-//const char *password = "ox7td34w";
-
-const char *ssid = "Marvin"; 
-const char *password = "marvin2605"; 
-WiFiServer server(80);
-
-// Add your MQTT Broker IP address, example:
-// const char* mqtt_server = "192.168.1.144";
-// const char* mqtt_server = "mqtt://192.168.137.32";
-//const char *mqtt_server = "192.168.3.22";
-const char *mqtt_server = "192.168.4.3";
-
-WiFiClient espClient;
-PubSubClient client(espClient);
 long lastMsg = 0;
 char msg[50];
 int value = 0;
 
 float distancia = 0;
+String messageTemp = "";
+char c;
 
 void setID();
 
@@ -106,6 +83,7 @@ void setID()
         {
         };
     }
+    Serial.println(F("Concluido to VL53L0X 1"));
     delay(10);
 
     // agora ativa também o sensor 2 (isso é possível porquê o sensor 1 já foi configurado com endereço diferente)
@@ -120,6 +98,7 @@ void setID()
         {
         };
     }
+    Serial.println(F("Concluido to VL53L0X 2"));
 }
 
 void ultrasound_reading();
@@ -128,13 +107,16 @@ int listaFuncao(String funcao);
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
+    //Serial1.begin(9600);
     while (!Serial)
     {
     }
-
-    WiFi.softAP(ssid, password);
     
+    /*while (!Serial1)
+    {
+    }*/
+
     pinMode(SHT_LOX1, OUTPUT);
     pinMode(SHT_LOX2, OUTPUT);
 
@@ -148,177 +130,69 @@ void setup()
 
     // função de configuração para novo endereço i2c
     setID();
-    // default settings
-    // (you can also pass in a Wire library object like &Wire2)
-    // status = bme.begin();
-
-    //setup_wifi();
-    client.setServer(mqtt_server, 1883);
-    client.setCallback(callback);
-
-    // pinMode(ledPin, OUTPUT);
 }
 
-void setup_wifi()
-{
-    delay(10);
-    // We start by connecting to a WiFi network
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-
-    WiFi.begin(ssid, password);
-
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-}
-
-void callback(char *topic, byte *message, unsigned int length)
-{
-  /*
-    Serial.print("Message arrived on topic: ");
-    Serial.print(topic);
-    Serial.print(". Message: ");
-    */
-    Serial.print(topic);
-    String messageTemp;
-
-    for (int i = 0; i < length; i++)
-    {
-        Serial.print((char)message[i]);
-        messageTemp += (char)message[i];
-    }
-    Serial.println();
-
-    if (String(topic) == "esp32/rasp")
-    {
-        //Serial.print("Changing output to ");
-        definirFuncao(messageTemp);
-    }
-}
-
-void reconnect()
-{
-    // Loop until we're reconnected
-    while (!client.connected())
-    {
-        Serial.print("Attempting MQTT connection...");
-        // Attempt to connect
-        if (client.connect("ESP8266Client"))
-        {
-            Serial.println("connected");
-            // Subscribe
-            client.subscribe("esp32/rasp");
-        }
-        else
-        {
-            Serial.print("failed, rc=");
-            Serial.print(client.state());
-            Serial.println(" try again in 5 seconds");
-            // Wait 5 seconds before retrying
-            delay(5000);
-        }
-    }
-}
 void loop()
 {
-    if (!client.connected())
+    while(Serial.available() > 0)
     {
-        reconnect();
+      c = Serial.read();
+      messageTemp += c;
     }
-    /*
-    currentMillis = millis();
-    // if WiFi is down, try reconnecting every CHECK_WIFI_TIME seconds
-    if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >= interval))
+    if(messageTemp.length() > 0)
     {
-        Serial.print(millis());
-        Serial.println("Reconnecting to WiFi...");
-        WiFi.disconnect();
-        WiFi.reconnect();
-        previousMillis = currentMillis;
-    }*/
-    client.loop();
+      definirFuncao(messageTemp);
+      messageTemp = "";
+    }
+    
 }
 
 void definirFuncao(String funcao)
 {
-    char tempString[8];
+    String retorno = "Erro para " + funcao;
+    bool setUp = true;
 
     switch (listaFuncao(funcao))
     { // decide qual sensor ler de acordo com a requisição
     // grava na variável distancia o valor de leitura de qualquer sensor
     case 1:
-        Serial.println("u1");
         distancia = ultrasonic1.read(CM);
         break;
     case 2:
-        Serial.println("u2");
         distancia = ultrasonic2.read(CM);
         break;
     case 3:
-        Serial.println("u3");
         distancia = ultrasonic3.read(CM);
         break;
     case 4:
-        Serial.println("l1");
         // leitura dos sensores em metros
         distancia = measure1.RangeMilliMeter;
         break;
     case 5:
-        Serial.println("l2");
         distancia = measure2.RangeMilliMeter;
         break;
     case 6:
-        Serial.println("gl1");
         break;
     case 7:
-        Serial.println("gl2");
         break;
     case 8:
-        Serial.println("ga");
         distancia = ultrasonic2.read(CM);
         break;
     case 9:
-        Serial.println("ax");
         distancia = ultrasonic2.read(CM);
         break;
     case 10:
-        Serial.println("ay");
         distancia = ultrasonic2.read(CM);
         break;
     case 11:
-        Serial.println("az");
         distancia = ultrasonic2.read(CM);
         break;
     default:
-        Serial.println("requisição inválida");
+        Serial.println("Error " + funcao);
         return;
     }
-    Serial.print("Distancia: ");
-    Serial.print(distancia);
-    // converte em string o valor de distância e salva na variável tempString
-    dtostrf(distancia, 5, 2, tempString);
-    
-    Serial.print("Distancia: ");
-    Serial.println(tempString);
-
-    // define o nome do tópico de retorno concatenando esp32/ com a função desejada
-    String topico = "esp32/" + funcao;
-    char topicoChar[(topico.length() + 1)];
-
-    // converte o nome do tópico para char e salva na variável topicoChar
-    topico.toCharArray(topicoChar, (topico.length() + 1));
-
-    // publica para o raspberry a mensagem tempString no tópico topicoChar
-    client.publish(topicoChar, tempString);
+    //O retorno por terminal precisa ser obrigatoriamente com println, print nao serve
+    Serial.println(distancia);
 }
 
 int listaFuncao(String funcao)

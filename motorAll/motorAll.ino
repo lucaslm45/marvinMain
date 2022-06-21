@@ -2,11 +2,15 @@
 #include <PubSubClient.h>
 
 // Replace the next variables with your SSID/Password combination
-const char *ssid = "Jordana - NOVA FIBRA";
-const char *password = "ox7td34w";
+//const char *ssid = "Jordana - NOVA FIBRA";
+//const char *password = "ox7td34w";
+
+const char *ssid = "Marvin";
+const char *password = "marvin2605";
 
 // Add your MQTT Broker IP address, example:
-const char *mqtt_server = "192.168.3.22";
+//const char *mqtt_server = "192.168.3.22";
+const char *mqtt_server = "192.168.4.3";
 int port = 1883;
 
 WiFiClient espClient;
@@ -34,7 +38,7 @@ unsigned long currentMillis;
 #define S2M3 19
 
 #define S1M4 2
-#define S2M4 4o
+#define S2M4 4
 
 // PWM
 #define PWM1 32

@@ -1,19 +1,11 @@
 #include <Ultrasonic.h>
 #include "Adafruit_VL53L0X.h"
 
-long lastMsg = 0;
-char msg[50];
-int value = 0;
-
 float distancia = 0;
 String messageTemp = "";
 char c;
 
 void setID();
-
-unsigned long previousMillis = 0;
-unsigned long interval = 30000;
-unsigned long currentMillis;
 
 /*******************************************************************************************************/
 /*                     CONFIGURAÇÃO HC-SR04                           */
@@ -165,11 +157,12 @@ void definirFuncao(String funcao)
         distancia = ultrasonic3.read(CM);
         break;
     case 4:
-        // leitura dos sensores em metros
-        distancia = measure1.RangeMilliMeter;
+        lox1.rangingTest(&measure1, false);
+        distancia = measure1.RangeStatus != 4 ? measure1.RangeMilliMeter/10 : 666;
         break;
     case 5:
-        distancia = measure2.RangeMilliMeter;
+        lox2.rangingTest(&measure2, false);
+        distancia = measure2.RangeStatus != 4 ? measure2.RangeMilliMeter/10 : 666;
         break;
     case 6:
         break;

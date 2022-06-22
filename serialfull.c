@@ -104,11 +104,7 @@ int listaFuncao(String funcao);
 void setup()
 {
     Serial.begin(9600);
-    Serial1.begin(115200);
     while (!Serial)
-    {
-    }
-    while (!Serial1)
     {
     }
 
@@ -131,13 +127,15 @@ void setup()
 
 void callback()
 {
-    String messageTemp = Serial.read();
+    char c = Serial.read();
+
+    String messageTemp;
 
     while (Serial.available() > 0)
     {
-        messageTemp += Serial.read();
+        messageTemp += c;
     }
-    if (messageTemp.length() > 0)
+    if(messageTemp.length() > 0)
     {
         definirFuncao(messageTemp);
         messageTemp = "";
@@ -160,53 +158,63 @@ void definirFuncao(String funcao)
     { // decide qual sensor ler de acordo com a requisição
     // grava na variável distancia o valor de leitura de qualquer sensor
     case 1:
-        Serial1.println("u1");
+        Serial.println("u1");
         distancia = ultrasonic1.read(CM);
         break;
     case 2:
-        Serial1.println("u2");
+        Serial.println("u2");
         distancia = ultrasonic2.read(CM);
         break;
     case 3:
-        Serial1.println("u3");
+        Serial.println("u3");
         distancia = ultrasonic3.read(CM);
         break;
     case 4:
-        Serial1.println("l1");
+        Serial.println("l1");
         // leitura dos sensores em metros
         distancia = measure1.RangeMilliMeter;
         break;
     case 5:
-        Serial1.println("l2");
+        Serial.println("l2");
         distancia = measure2.RangeMilliMeter;
         break;
     case 6:
-        Serial1.println("gl1");
+        Serial.println("gl1");
         break;
     case 7:
-        Serial1.println("gl2");
+        Serial.println("gl2");
         break;
     case 8:
-        Serial1.println("ga");
+        Serial.println("ga");
         distancia = ultrasonic2.read(CM);
         break;
     case 9:
-        Serial1.println("ax");
+        Serial.println("ax");
         distancia = ultrasonic2.read(CM);
         break;
     case 10:
-        Serial1.println("ay");
+        Serial.println("ay");
         distancia = ultrasonic2.read(CM);
         break;
     case 11:
-        Serial1.println("az");
+        Serial.println("az");
         distancia = ultrasonic2.read(CM);
         break;
     default:
-        Serial1.println("requisição inválida");
+        Serial.println("requisição inválida");
         return;
     }
+
     Serial.print(distancia);
+    // define o nome do tópico de retorno concatenando esp32/ com a função desejada
+    String topico = "esp32/" + funcao;
+    char topicoChar[(topico.length() + 1)];
+
+    // converte o nome do tópico para char e salva na variável topicoChar
+    topico.toCharArray(topicoChar, (topico.length() + 1));
+
+    // publica para o raspberry a mensagem tempString no tópico topicoChar
+    client.publish(topicoChar, tempString);
 }
 
 int listaFuncao(String funcao)

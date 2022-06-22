@@ -1,10 +1,16 @@
+from ast import NotEq
+from cgi import test
 from enum import Enum
+from lib2to3.pgen2.token import EQUAL
+from operator import eq
 from os import PRIO_USER
 import time
 import serial
 
-ser = serial.Serial("/dev/ttyUSB0", 115200)
-# sermotor = serial.Serial("/dev/ttyUSB1", 115200)
+device1 = "/dev/ttyUSB1"
+device2 = "/dev/ttyUSB0"
+ser = serial.Serial(device1, 115200)
+sermotor = serial.Serial(device2, 115200)
 
 ## End System Topics
 class estados(Enum):
@@ -16,9 +22,9 @@ class estados(Enum):
 
 estadoAtual = estados.waitUser
 
-posicaox = 0; posicaoy = 0; objetivo1x = 10; objetivo1y = 10; objetivo2x = 10; objetivo2y = 10; objetivo3x = 10; objetivo3y = 10; obstaculoDist = 60; readDistMin = 0
+posicaox = 0; posicaoy = 0; objetivo1x = 10; objetivo1y = 10; objetivo2x = 10; objetivo2y = 10; objetivo3x = 10; objetivo3y = 10; obstaculoDist = 60; readDistMin = 0; correcLaser2 = 5
 
-ultrassom1 = 0; ultrassom2 = 0; ultrassom3 = 0; laser1 = 10; laser2 = 20; latitude = 0; longitude = 0; angle = 0; acelX = 0; acelY = 0; acelZ = 0
+ultrassom1 = 0; ultrassom2 = 0; ultrassom3 = 0; laser1 = 0; laser2 = 0; latitude = 0; longitude = 0; angle = 0; acelX = 0; acelY = 0; acelZ = 0
 upU1 = False; upU2 = False; upU3 = False; upL1 = False; upL2 = False; upGl1 = False; upGl2 = False; upGa = False; upAcelX = False; upAcelY = False; upAcelZ = False; upReceive = False
 
 flagCaminhoLivre = False; flagEmRota = False; notBreak = True
@@ -138,6 +144,11 @@ def message_to_l2():
     ser.write("l2".encode())
     setL2(float(ser.readline()))
 
+def message_to_motor(comando):
+    sermotor.write(comando.encode())
+    sermotor.readline()
+
+    setUpRecebido()
 # def message_to_gl1():
 
 # def message_to_gl2():
@@ -153,25 +164,48 @@ def current_milli_time():
 
 # consulta dados dos sensores e seta se o caminho tá livre
 def consultaSensores():
-    #Set flatCaminhoLivre
+    global flagCaminhoLivre
     flagCaminhoLivre = True
-    if (ultrassom1 > readDistMin and ultrassom1 < obstaculoDist) or (ultrassom2 > readDistMin and ultrassom2 < obstaculoDist) or (ultrassom3 > readDistMin and ultrassom3 < obstaculoDist):
-        flagCaminhoLivre = False 
-    elif ((laser1 > readDistMin and laser1 < obstaculoDist) or (laser2 > readDistMin and laser2 < obstaculoDist)):
-        flagCaminhoLivre = False 
+
+# Consultando Ultrassons
+    message_to_u1()
+    while(not upU1):{}
+    setUpU1()
+    checkObstaculo()
+    
+    message_to_u2()
+    while(not upU2):{}
+    setUpU2()
+    checkObstaculo()
+
+    message_to_u3()
+    while(not upU3):{}
+    setUpU3()
+    checkObstaculo()
+
+    message_to_l1()
+    while(not upL1):{}
+    setUpL1()
+    checkObstaculo()
+
+    message_to_l2()
+    while(not upL2):{}
+    setUpL2()
+    checkObstaculo()
 
 def checkObstaculo():
     global flagCaminhoLivre
-    if not ((ultrassom1 > readDistMin and ultrassom1 < obstaculoDist) or (ultrassom2 > readDistMin and ultrassom2 < obstaculoDist) or 
-        (ultrassom3 > readDistMin and ultrassom3 < obstaculoDist) or (laser1 > readDistMin and laser1 < obstaculoDist) or (laser2 > readDistMin and laser2 < obstaculoDist)):
-            flagCaminhoLivre = True
-    else:
-        flagCaminhoLivre = False
+    if ((ultrassom1 > readDistMin and ultrassom1 < obstaculoDist) or (ultrassom2 > readDistMin and ultrassom2 < obstaculoDist) or 
+        (ultrassom3 > readDistMin and ultrassom3 < obstaculoDist) or (laser1 > readDistMin and laser1 < obstaculoDist) or (laser2 > (readDistMin + correcLaser2) and laser2 < obstaculoDist)):
+            flagCaminhoLivre = False
+    # else:
+        # flagCaminhoLivre = False
 
 
     if not flagCaminhoLivre:
+        message_to_motor("p")
         # client.publish("esp32m/rasp", "p") #angulo de rotação do robô
-        # while(not upReceive):{}
+        while(not upReceive):{}
         setUpRecebido()
 
 while 1:
@@ -180,31 +214,12 @@ while 1:
         objetivo1x = 10
         estadoAtual = estados.buscaLocal
     elif estadoAtual == estados.buscaLocal:
-        # Consultando Ultrassons
-        message_to_u1()
-        while(not upU1):{}
-        setUpU1()
-        checkObstaculo()
-        
-        message_to_u2()
-        while(not upU2):{}
-        setUpU2()
-        checkObstaculo()
+        consultaSensores()
+        if flagCaminhoLivre:
+            message_to_motor("f")
+            while(not upReceive):{}
+            setUpRecebido()
 
-        message_to_u3()
-        while(not upU3):{}
-        setUpU3()
-        checkObstaculo()
-
-        message_to_l1()
-        while(not upL1):{}
-        setUpL1()
-        checkObstaculo()
-
-        message_to_l2()
-        while(not upL2):{}
-        setUpL2()
-        checkObstaculo()
         # client.publish("esp32/rasp", "u2") #ultrassom3
         # while(not upU2):{}
         # setUpU2()
@@ -244,13 +259,14 @@ while 1:
         # while(not upGa):{}
         # setUpGa()
 
-        # print(ultrassom1)
-        # print(ultrassom2)
-        # print(ultrassom3)
-        time.sleep(.20)
+        print(ultrassom1)
+        print(ultrassom2)
+        print(ultrassom3)
         print(laser1)
         print(laser2)
-        print("")
+        time.sleep(.20)
+
+        # print("")
 
         # print(angle)
 

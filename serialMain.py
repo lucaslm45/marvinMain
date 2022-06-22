@@ -1,14 +1,10 @@
-from ast import NotEq
-from cgi import test
 from enum import Enum
-from lib2to3.pgen2.token import EQUAL
-from operator import eq
-from os import PRIO_USER
 import time
 import serial
 
 device1 = "/dev/ttyUSB1"
 device2 = "/dev/ttyUSB0"
+obstaculoDist = 60; readDistMin = 0; correcLaser2 = 5
 ser = serial.Serial(device1, 115200)
 sermotor = serial.Serial(device2, 115200)
 
@@ -22,10 +18,11 @@ class estados(Enum):
 
 estadoAtual = estados.waitUser
 
-posicaox = 0; posicaoy = 0; objetivo1x = 10; objetivo1y = 10; objetivo2x = 10; objetivo2y = 10; objetivo3x = 10; objetivo3y = 10; obstaculoDist = 60; readDistMin = 0; correcLaser2 = 5
+posicaox = 0; posicaoy = 0; objetivo1x = 10; objetivo1y = 10; objetivo2x = 10; objetivo2y = 10; objetivo3x = 10; objetivo3y = 10
 
 ultrassom1 = 0; ultrassom2 = 0; ultrassom3 = 0; laser1 = 0; laser2 = 0; latitude = 0; longitude = 0; angle = 0; acelX = 0; acelY = 0; acelZ = 0
 upU1 = False; upU2 = False; upU3 = False; upL1 = False; upL2 = False; upGl1 = False; upGl2 = False; upGa = False; upAcelX = False; upAcelY = False; upAcelZ = False; upReceive = False
+mapTamX = 40; mapTamY = 40
 
 flagCaminhoLivre = False; flagEmRota = False; notBreak = True
 
@@ -144,6 +141,18 @@ def message_to_l2():
     ser.write("l2".encode())
     setL2(float(ser.readline()))
 
+def message_to_ga():
+    ser.write("ga".encode())
+    setGa(float(ser.readline()))
+
+def message_to_acelX():
+    ser.write("ax".encode())
+    setAx(float(ser.readline()))
+
+def message_to_acelY():
+    ser.write("ay".encode())
+    setAy(float(ser.readline()))
+
 def message_to_motor(comando):
     sermotor.write(comando.encode())
     sermotor.readline()
@@ -193,96 +202,73 @@ def consultaSensores():
     setUpL2()
     checkObstaculo()
 
+    if not flagCaminhoLivre:
+        message_to_ga()
+        while(not upGa):{}
+        setUpGa()
+
+        #Faz o robo girar, manda o angulo lido para o espMotor
+
+        
 def checkObstaculo():
     global flagCaminhoLivre
     if ((ultrassom1 > readDistMin and ultrassom1 < obstaculoDist) or (ultrassom2 > readDistMin and ultrassom2 < obstaculoDist) or 
         (ultrassom3 > readDistMin and ultrassom3 < obstaculoDist) or (laser1 > readDistMin and laser1 < obstaculoDist) or (laser2 > (readDistMin + correcLaser2) and laser2 < obstaculoDist)):
             flagCaminhoLivre = False
-    # else:
-        # flagCaminhoLivre = False
+            message_to_motor("p")
+            while(not upReceive):{}
+            setUpRecebido()
+
+def determinaLocal():
+    global flagEmRota
+    #faz alguma coisa
+    flagEmRota = False #or True
+
+def determinaRota():
+    global flagEmRota
+    #faz alguma coisa
+    flagEmRota = True #or False
 
 
-    if not flagCaminhoLivre:
-        message_to_motor("p")
-        # client.publish("esp32m/rasp", "p") #angulo de rotação do robô
-        while(not upReceive):{}
-        setUpRecebido()
+# def getPosicoes:
+
+# def setPosicoes:
 
 while 1:
     if estadoAtual == estados.waitUser:
         # pega dados da pagina web
-        objetivo1x = 10
+        # objetivo1x = 10
+        # objetivo1y = 10
+        # objetivo2x = 0
+        # objetivo2y = 10
+        # objetivo3x = 15
+        # objetivo3y = 15
+
+        # setPosicoes()
         estadoAtual = estados.buscaLocal
     elif estadoAtual == estados.buscaLocal:
+        #Set flatCaminhoLivre e para robo se obstaculo detectado
         consultaSensores()
-        if flagCaminhoLivre:
-            message_to_motor("f")
-            while(not upReceive):{}
-            setUpRecebido()
+        determinaLocal()
 
-        # client.publish("esp32/rasp", "u2") #ultrassom3
-        # while(not upU2):{}
-        # setUpU2()
-        # checkObstaculo()
+        if (not flagEmRota) or (not flagCaminhoLivre):
+            estadoAtual = estados.calcRota
+        
+        elif flagEmRota:
+            estadoAtual = estados.segueRota
 
-        # client.publish("esp32/rasp", "u3") #ultrassom3
-        # while(not upU3):{}
-        # setUpU3()
-        # checkObstaculo()
+    elif estadoAtual == estados.calcRota:
+        while (not flagCaminhoLivre):
+            consultaSensores()
+            
+        determinaRota()
 
-        # client.publish("esp32/rasp", "l1") #laser1
-        # while(not upL1):{}
-        # setUpL1()
-        # checkObstaculo()
+        if flagEmRota:
+            estadoAtual = estados.segueRota
 
-        # client.publish("esp32/rasp", "l2") #laser2
-        # while(not upL2):{}
-        # setUpL2()
-        # checkObstaculo()
+    elif estadoAtual == estados.segueRota:
+        message_to_motor("f")
+        while(not upReceive):{}
+        setUpRecebido()
 
-
-        # if(flagCaminhoLivre):
-        #     client.publish("esp32m/rasp", "f") #angulo de rotação do robô
-        #     while(not upReceive):{}
-        #     setUpRecebido()
-        #Determinando localização
-        # client.publish("esp32/rasp", "gl1") #gpsLatitude
-        # while(not upGl1):{}
-        # setUpGl1()
-
-        # client.publish("esp32/rasp", "gl2") #gpsLongitude
-        # while(not upGl2):{}
-        # setUpGl2()
-
-        # #Determinando Angulo
-        # client.publish("esp32/rasp", "ga") #angulo de rotação do robô
-        # while(not upGa):{}
-        # setUpGa()
-
-        print(ultrassom1)
-        print(ultrassom2)
-        print(ultrassom3)
-        print(laser1)
-        print(laser2)
-        time.sleep(.20)
-
-        # print("")
-
-        # print(angle)
-
-         
-            # estadoAtual = estados.calcRota
-            # continue
-
-
-    #Em rota é a localizacao atual com o angulo aponta para o objetivo?
-
-        # print(flagCaminhoLivre)
-
-        # if not flagEmRota or not flagCaminhoLivre:
-        #     estadoAtual = estados.calcRota
-        # elif flagEmRota:
-        #     estadoAtual = estados.segueRota
-        # elif estadoAtual == estadoAtual.calcRota:
-
-
+        estadoAtual = estados.buscaLocal

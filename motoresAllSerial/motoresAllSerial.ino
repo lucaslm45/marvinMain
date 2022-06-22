@@ -36,8 +36,8 @@ short usSpeed = 90;      // default motor speed
 short usSpeedGiro = 185; // default motor speed Giro
 short magicWheel1 = 1;
 short magicWheel2 = 1;
-short magicWheel3 = 1.7;
-short magicWheel4 = 1.7;
+short magicWheel3 = 1.8;
+short magicWheel4 = 1.8;
 float distancia = 0;
 String messageTemp = "";
 char c;
@@ -164,8 +164,6 @@ void robot_forward()
 {
     if (usMotor_Status != CW)
     {
-        stopSeguro();
-
         usMotor_Status = CW;
         motorGo(MOTOR_1, usMotor_Status, usSpeed);
         motorGo(MOTOR_2, usMotor_Status, usSpeed);
@@ -177,19 +175,17 @@ void robot_forward()
 
 void robot_backward()
 {
-    if (usMotor_Status != CCW)
-    {
-        stopSeguro();
-        usMotor_Status = CCW;
-        motorGo(MOTOR_1, usMotor_Status, usSpeed);
-        motorGo(MOTOR_2, usMotor_Status, usSpeed);
-        motorGo(MOTOR_3, usMotor_Status, usSpeed);
-        motorGo(MOTOR_4, usMotor_Status, usSpeed);
-    }
+    stopSeguro();
+    
+    usMotor_Status = CCW;
+    motorGo(MOTOR_1, usMotor_Status, usSpeed);
+    motorGo(MOTOR_2, usMotor_Status, usSpeed);
+    motorGo(MOTOR_3, usMotor_Status, usSpeed);
+    motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    
 } // end robot backward
 void robot_right(float angulo)
 {
-    stopSeguro();
     float tempo = tempoDeCurva(angulo);
     long tempoInicio = millis();
 
@@ -202,12 +198,15 @@ void robot_right(float angulo)
         motorGo(MOTOR_3, usMotor_Status, usSpeedGiro);
         motorGo(MOTOR_4, usMotor_Status, usSpeedGiro);
     }
+    //Desliga tudo para não dar açoite quando for andar para frente
+    stopSeguro();
+    //Para o robo andar para frente
+    usMotor_Status = CCW;
 
 } // end robot right
 
 void robot_left(float angulo)
 {
-    stopSeguro();
     float tempo = tempoDeCurva(angulo);
     long tempoInicio = millis();
 
@@ -220,14 +219,21 @@ void robot_left(float angulo)
         motorGo(MOTOR_3, usMotor_Status, usSpeedGiro);
         motorGo(MOTOR_4, usMotor_Status, usSpeedGiro);
     }
+    //Desliga tudo para não dar açoite quando for andar para frente
+    stopSeguro();
+    //Para o robo andar para frente
+    usMotor_Status = CCW;
 } // end robot backward
 void robot_stop()
 {
+  if (usMotor_Status != BRAKE)
+  {
     usMotor_Status = BRAKE;
     motorGo(MOTOR_1, usMotor_Status, 0);
     motorGo(MOTOR_2, usMotor_Status, 0);
     motorGo(MOTOR_3, usMotor_Status, 0);
     motorGo(MOTOR_4, usMotor_Status, 0);
+  }
 
 } // end robot stop
 

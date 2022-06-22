@@ -1,37 +1,31 @@
-/*********
-  Rui Santos
-  Complete project details at https://randomnerdtutorials.com
-*********/
-
-#include <WiFi.h>
-#include <PubSubClient.h>
 #include <Ultrasonic.h>
 #include "Adafruit_VL53L0X.h"
+#include "MPU9250.h"
+int status;
+MPU9250 MPU(Wire, 0x68);
 
-// Replace the next variables with your SSID/Password combination
-/*const char* ssid = "Ctba_Lucas";
-const char* password = "1020oeku";*/
-const char *ssid = "Jordana - NOVA FIBRA";
-const char *password = "ox7td34w";
+// Limite de aceleração para objeto parado
+#define STOP_OFFSET 1.0
 
-// Add your MQTT Broker IP address, example:
-// const char* mqtt_server = "192.168.1.144";
-// const char* mqtt_server = "mqtt://192.168.137.32";
-const char *mqtt_server = "192.168.3.22";
-
-WiFiClient espClient;
-PubSubClient client(espClient);
-long lastMsg = 0;
-char msg[50];
-int value = 0;
-
+// ----- Variáveis globais -----
 float distancia = 0;
+String messageTemp = "";
+char c;
+// Variavel para armazenar o tempo entre cada amostra
+unsigned long t_amostra = 0;
+// Variaveis para verificar se o objeto está parado
+unsigned long t_parado = 0;
+bool parado = true;
+// Variavel para guardar a distancia deslocada
+float distx = 0;
+long timer = 0;
 
+// ----- Funções -----
 void setID();
-
-unsigned long previousMillis = 0;
-unsigned long interval = 30000;
-unsigned long currentMillis;
+float calculo_trapezio(float dist, float acel, unsigned long tempo);
+void ultrasound_reading();
+void definirFuncao(String funcao);
+int listaFuncao(String funcao);
 
 /*******************************************************************************************************/
 /*                     CONFIGURAÇÃO HC-SR04                           */
@@ -101,6 +95,7 @@ void setID()
         {
         };
     }
+    Serial.println(F("Concluido to VL53L0X 1"));
     delay(10);
 
     // agora ativa também o sensor 2 (isso é possível porquê o sensor 1 já foi configurado com endereço diferente)
@@ -115,18 +110,61 @@ void setID()
         {
         };
     }
+    Serial.println(F("Concluido to VL53L0X 2"));
 }
+/*
+ * Calcula em tempo real a distância percorrida pela regra do trapézio
+ * Parâmetros:
+ *  - dist - distância que está sendo calculada
+ *  - acel - aceleração medida atualmente
+ *  - tempo - tempo em microssegundos gasto desde a ultima medição
+ */
+float calculo_trapezio(float dist, float acel, unsigned long tempo)
+{
+    // Armazena o ultimo valor de aceleração e velocidade dentro da própria
+    // função declarando a variável como static (no 1º momento ela será 0)
+    static float last_acel = 0.0;
+    static float last_vel = 0.0;
 
-void ultrasound_reading();
-void definirFuncao(String funcao);
-int listaFuncao(String funcao);
+    float vel;
+    // Converte o tempo para um valor em segundos
+    float t = (float)tempo / 1000000.0;
 
+    // Se o movimento acabou de começar, reinicia a velocidade e a aceleração
+    if (dist == 0.0)
+    {
+        last_vel = 0.0;
+        last_acel = 0.0;
+    }
+
+    // Calculo utilizando a regra do trapézio
+    // Soma a velocidade anterior
+    vel = last_vel + (last_acel + acel) * t / 2.0;
+
+    dist = dist + (last_vel + vel) * t / 2.0;
+
+    // Atualiza os valores antigos de aceleração e velocidade
+    last_acel = acel;
+    last_vel = vel;
+
+    return dist;
+}
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
+    // Serial1.begin(9600);
     while (!Serial)
     {
     }
+    while (MPU.begin() < 0)
+    {
+        Serial.print("Falha de inicialização, confira as conexões. Status: ");
+        Serial.println(status);
+    }
+    /*while (!Serial1)
+    {
+    }*/
+    t_amostra = micros();
     pinMode(SHT_LOX1, OUTPUT);
     pinMode(SHT_LOX2, OUTPUT);
 
@@ -140,182 +178,79 @@ void setup()
 
     // função de configuração para novo endereço i2c
     setID();
-    // default settings
-    // (you can also pass in a Wire library object like &Wire2)
-    // status = bme.begin();
 
-    setup_wifi();
-    client.setServer(mqtt_server, 1883);
-    client.setCallback(callback);
-
-    // pinMode(ledPin, OUTPUT);
+    Serial.println(("OK"));
 }
 
-void setup_wifi()
-{
-    delay(10);
-    // We start by connecting to a WiFi network
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(ssid);
-
-    WiFi.begin(ssid, password);
-
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println("");
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
-}
-
-void callback(char *topic, byte *message, unsigned int length)
-{
-    Serial.print("Message arrived on topic: ");
-    Serial.print(topic);
-    Serial.print(". Message: ");
-    String messageTemp;
-
-    for (int i = 0; i < length; i++)
-    {
-        Serial.print((char)message[i]);
-        messageTemp += (char)message[i];
-    }
-    Serial.println();
-
-    if (String(topic) == "esp32/rasp")
-    {
-        Serial.print("Changing output to ");
-        definirFuncao(messageTemp);
-    }
-}
-
-void reconnect()
-{
-    // Loop until we're reconnected
-    while (!client.connected())
-    {
-        Serial.print("Attempting MQTT connection...");
-        // Attempt to connect
-        if (client.connect("ESP8266Client"))
-        {
-            Serial.println("connected");
-            // Subscribe
-            client.subscribe("esp32/rasp");
-        }
-        else
-        {
-            Serial.print("failed, rc=");
-            Serial.print(client.state());
-            Serial.println(" try again in 5 seconds");
-            // Wait 5 seconds before retrying
-            delay(5000);
-        }
-    }
-}
 void loop()
 {
-    if (!client.connected())
+    while (Serial.available() > 0)
     {
-        reconnect();
+        c = Serial.read();
+        messageTemp += c;
     }
-    currentMillis = millis();
-    // if WiFi is down, try reconnecting every CHECK_WIFI_TIME seconds
-    if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >= interval))
+    if (messageTemp.length() > 0)
     {
-        Serial.print(millis());
-        Serial.println("Reconnecting to WiFi...");
-        WiFi.disconnect();
-        WiFi.reconnect();
-        previousMillis = currentMillis;
+        definirFuncao(messageTemp);
+        messageTemp = "";
     }
-    client.loop();
 }
 
 void definirFuncao(String funcao)
 {
-    char tempString[8];
+    String retorno = "Erro para " + funcao;
+    bool setUp = true;
 
     switch (listaFuncao(funcao))
     { // decide qual sensor ler de acordo com a requisição
     // grava na variável distancia o valor de leitura de qualquer sensor
     case 1:
-        Serial.println("u1");
         distancia = ultrasonic1.read(CM);
         break;
     case 2:
-        Serial.println("u2");
         distancia = ultrasonic2.read(CM);
         break;
     case 3:
-        Serial.println("u3");
         distancia = ultrasonic3.read(CM);
         break;
     case 4:
-        Serial.println("l1");
-        // leitura dos sensores em metros
-        distancia = measure1.RangeMilliMeter / 100;
+        lox1.rangingTest(&measure1, false);
+        distancia = measure1.RangeStatus != 4 ? measure1.RangeMilliMeter / 10 : 666;
         break;
     case 5:
-        Serial.println("l2");
-        distancia = measure2.RangeMilliMeter / 100;
+        lox2.rangingTest(&measure2, false);
+        distancia = measure2.RangeStatus != 4 ? measure2.RangeMilliMeter / 10 : 666;
         break;
     case 6:
-        Serial.println("gl1");
         break;
     case 7:
-        Serial.println("gl2");
         break;
     case 8:
-        Serial.println("ga");
         distancia = ultrasonic2.read(CM);
         break;
     case 9:
-        Serial.println("ax");
-        distancia = ultrasonic2.read(CM);
+        // Anda pra frente por x tempo, x = funcao.substring(1).toFloat()
+        distancia = andaParaFrente(funcao.substring(2).toFloat());
+        // distancia = ultrasonic2.read(CM);
         break;
     case 10:
-        Serial.println("ay");
         distancia = ultrasonic2.read(CM);
         break;
     case 11:
-        Serial.println("az");
         distancia = ultrasonic2.read(CM);
         break;
     default:
-        Serial.println("requisição inválida");
+        Serial.println("Error " + funcao);
         return;
     }
-
-    if (!(funcao == "gl1" || funcao == "gl2"))
-    {
-        // converte em string o valor de distância e salva na variável tempString
-        dtostrf(distancia, 5, 2, tempString);
-    }
-    else
-    {
-        dtostrf(distancia, 8, 4, tempString);
-    }
-    Serial.print("Distancia: ");
-    Serial.println(tempString);
-
-    // define o nome do tópico de retorno concatenando esp32/ com a função desejada
-    String topico = "esp32/" + funcao;
-    char topicoChar[(topico.length() + 1)];
-
-    // converte o nome do tópico para char e salva na variável topicoChar
-    topico.toCharArray(topicoChar, (topico.length() + 1));
-
-    // publica para o raspberry a mensagem tempString no tópico topicoChar
-    client.publish(topicoChar, tempString);
+    // O retorno por terminal precisa ser obrigatoriamente com println, print nao serve
+    Serial.println(distancia);
 }
 
-int listaFuncao(String funcao)
+int listaFuncao(String comando)
 {
+    String funcao = comando.substring(0, 2);
+
     if (funcao == "u1")
     { // ultrassom 1
         return 1;
@@ -361,4 +296,56 @@ int listaFuncao(String funcao)
         return 11;
     }
     return 0; // requisição inválida
+}
+
+float andaParaFrente(float tempo)
+{
+    long tempoInicio = millis();
+    float distancia = 0;
+
+    while ((millis() - tempoInicio) < tempo)
+    {
+        status = MPU.readSensor();
+
+        if (status > 0)
+        {
+            float aux_acx = MPU.getAccelX_mss();
+
+            if (fabs(aux_acx) < STOP_OFFSET && abs(long(millis() - t_parado)) > 50)
+            {
+                parado = true;
+
+                t_amostra = micros();
+            }
+            else if (fabs(aux_acx) >= STOP_OFFSET)
+            {
+                t_parado = millis();
+                parado = false;
+            }
+
+            // ----- Calculo da distancia deslocada -----
+            // Se está parado
+            if (parado)
+            {
+                if (distx != 0.0)
+                {
+                    // A função retorna o valor em metros,
+                    // então multiplica por 100 para converter para centímetros
+                    distancia += distx*100;
+                }
+                distx = 0.0;
+            }
+            // Está se movendo
+            else
+            {
+                // Calcula o tempo percorrido
+                t_amostra = micros() - t_amostra;
+
+                distx = calculo_trapezio(distx, aux_acx, t_amostra);
+
+                t_amostra = micros();
+            }
+        }
+    }
+    return distancia;
 }

@@ -32,12 +32,12 @@
 #define delaySen 800
 
 // --- Variáveis Globais ---
-short usSpeed = 85;      // default motor speed
+short usSpeed = 90;      // default motor speed
 short usSpeedGiro = 185; // default motor speed Giro
-short magicWheel1 = 70 / usSpeed;
-short magicWheel2 = 70 / usSpeed;
-short magicWheel3 = (usSpeed + 30) / usSpeed;
-short magicWheel4 = (usSpeed + 30) / usSpeed;
+short magicWheel1 = 1;
+short magicWheel2 = 1;
+short magicWheel3 = 1.8;
+short magicWheel4 = 1.8;
 float distancia = 0;
 String messageTemp = "";
 char c;
@@ -57,8 +57,10 @@ void reconnect();
 void moverRobo(String funcao);
 int listaFuncao(String comando);
 float tempoDeCurva(float angulo);
+long timeStandy = 50000;
 
 unsigned char velocidade = 0x00; // armazena a velocidade dos motores (8 bits)
+long inicioLaco;
 void setup()
 {
     Serial.begin(115200); // Initiates the serial to do the monitoring
@@ -83,6 +85,7 @@ void setup()
 
     pinMode(S1M4, OUTPUT); // Sentido 1 M4
     pinMode(S2M4, OUTPUT); // Sentido 2 M4
+    inicioLaco = millis();
 }
 void loop()
 {
@@ -93,8 +96,13 @@ void loop()
     }
     if(messageTemp.length() > 0)
     {
+      inicioLaco = millis();
       moverRobo(messageTemp);
       messageTemp = "";
+    }
+    if(millis() - inicioLaco > timeStandy)
+    {
+      robot_stop();
     }
 }
 
@@ -121,7 +129,7 @@ void moverRobo(String funcao)
         robot_left(funcao.substring(1).toFloat());
         break;
     default:
-        Serial.println("Error " + funcao);
+        Serial.println("Error motor" + funcao);
         return;
     }
     Serial.println("OK");
@@ -149,14 +157,13 @@ int listaFuncao(String comando)
     { // esquerda
         return 5;
     }
+    
     return 0; // requisição inválida
 }
 void robot_forward()
 {
     if (usMotor_Status != CW)
     {
-        stopSeguro();
-
         usMotor_Status = CW;
         motorGo(MOTOR_1, usMotor_Status, usSpeed);
         motorGo(MOTOR_2, usMotor_Status, usSpeed);
@@ -168,19 +175,17 @@ void robot_forward()
 
 void robot_backward()
 {
-    if (usMotor_Status != CCW)
-    {
-        stopSeguro();
-        usMotor_Status = CCW;
-        motorGo(MOTOR_1, usMotor_Status, usSpeed);
-        motorGo(MOTOR_2, usMotor_Status, usSpeed);
-        motorGo(MOTOR_3, usMotor_Status, usSpeed);
-        motorGo(MOTOR_4, usMotor_Status, usSpeed);
-    }
+    stopSeguro();
+    
+    usMotor_Status = CCW;
+    motorGo(MOTOR_1, usMotor_Status, usSpeed);
+    motorGo(MOTOR_2, usMotor_Status, usSpeed);
+    motorGo(MOTOR_3, usMotor_Status, usSpeed);
+    motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    
 } // end robot backward
 void robot_right(float angulo)
 {
-    stopSeguro();
     float tempo = tempoDeCurva(angulo);
     long tempoInicio = millis();
 
@@ -193,12 +198,15 @@ void robot_right(float angulo)
         motorGo(MOTOR_3, usMotor_Status, usSpeedGiro);
         motorGo(MOTOR_4, usMotor_Status, usSpeedGiro);
     }
+    //Desliga tudo para não dar açoite quando for andar para frente
+    stopSeguro();
+    //Para o robo andar para frente
+    usMotor_Status = CCW;
 
 } // end robot right
 
 void robot_left(float angulo)
 {
-    stopSeguro();
     float tempo = tempoDeCurva(angulo);
     long tempoInicio = millis();
 
@@ -211,14 +219,21 @@ void robot_left(float angulo)
         motorGo(MOTOR_3, usMotor_Status, usSpeedGiro);
         motorGo(MOTOR_4, usMotor_Status, usSpeedGiro);
     }
+    //Desliga tudo para não dar açoite quando for andar para frente
+    stopSeguro();
+    //Para o robo andar para frente
+    usMotor_Status = CCW;
 } // end robot backward
 void robot_stop()
 {
+  if (usMotor_Status != BRAKE)
+  {
     usMotor_Status = BRAKE;
     motorGo(MOTOR_1, usMotor_Status, 0);
     motorGo(MOTOR_2, usMotor_Status, 0);
     motorGo(MOTOR_3, usMotor_Status, 0);
     motorGo(MOTOR_4, usMotor_Status, 0);
+  }
 
 } // end robot stop
 
@@ -238,7 +253,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
 {
     if (motor == MOTOR_1)
     {
-        pwm = magicWheel1;
+        pwm *= magicWheel1;
         int s1 = S1M1, s2 = S2M1, pwmMotor = PWM1;
 
         if (direct == CCW)
@@ -261,7 +276,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
     }
     else if (motor == MOTOR_2)
     {
-        pwm = magicWheel2;
+        pwm *= magicWheel2;
         int s1 = S1M2, s2 = S2M2, pwmMotor = PWM2;
 
         if (direct == CCW)
@@ -284,7 +299,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
     }
     else if (motor == MOTOR_3)
     {
-        pwm = magicWheel3;
+        pwm *= magicWheel3;
         int s1 = S1M3, s2 = S2M3, pwmMotor = PWM3;
 
         if (direct == CCW)
@@ -307,7 +322,7 @@ void motorGo(uint8_t motor, uint8_t direct, uint8_t pwm) // Function that contro
     }
     else if (motor == MOTOR_4)
     {
-        pwm = magicWheel4;
+        pwm *= magicWheel4;
         int s1 = S1M4, s2 = S2M4, pwmMotor = PWM4;
 
         if (direct == CCW)

@@ -1,4 +1,5 @@
 from enum import Enum
+from re import A
 import time
 import serial
 
@@ -123,7 +124,9 @@ def setAy(valor):
 
 def message_to_u1():
     ser.write("u1".encode())
-    setU1(float(ser.readline()))
+    var = ser.readline()
+    print(var)
+    setU1(float(var))
 
 def message_to_u2():
     ser.write("u2".encode())
@@ -145,17 +148,27 @@ def message_to_ga():
     ser.write("ga".encode())
     setGa(float(ser.readline()))
 
-def message_to_acelX():
-    ser.write("ax".encode())
-    setAx(float(ser.readline()))
+def message_to_acelX(tempo):
+    comando = "ax" + tempo
+    print(comando)
+    comprimido = comando.encode()
+    print(comprimido)
+    print(comando)
+    ser.write(comando.encode())
+    var = ser.readline()
+    print(var)
+    setAx(float(var))
 
 def message_to_acelY():
     ser.write("ay".encode())
+    var = ser.readline()
+    print(var)
     setAy(float(ser.readline()))
 
 def message_to_motor(comando):
     sermotor.write(comando.encode())
-    sermotor.readline()
+    var = sermotor.readline()
+    print (var)
 
     setUpRecebido()
 # def message_to_gl1():
@@ -202,10 +215,10 @@ def consultaSensores():
     setUpL2()
     checkObstaculo()
 
-    if not flagCaminhoLivre:
-        message_to_ga()
-        while(not upGa):{}
-        setUpGa()
+    # if not flagCaminhoLivre:
+    #     message_to_ga()
+    #     while(not upGa):{}
+    #     setUpGa()
 
         #Faz o robo girar, manda o angulo lido para o espMotor
 
@@ -248,27 +261,54 @@ while 1:
         estadoAtual = estados.buscaLocal
     elif estadoAtual == estados.buscaLocal:
         #Set flatCaminhoLivre e para robo se obstaculo detectado
+        print("Consultando Sensores")
         consultaSensores()
-        determinaLocal()
+        print("Sensores Consultados")
 
-        if (not flagEmRota) or (not flagCaminhoLivre):
+        # determinaLocal()
+        print(flagCaminhoLivre)
+
+        if flagCaminhoLivre:
+            print("enviando para motor")
+            message_to_motor("f")
+            while(not upReceive):{}
+            setUpRecebido()
+            print("resposta motor")
+
+            message_to_acelX("1200")
+            while not upAcelX or flagCaminhoLivre:
+                consultaSensores()
+
+            setUpAcelX()
+            message_to_motor("p")
+            while(not upReceive):{}
+            setUpRecebido()
+
             estadoAtual = estados.calcRota
+            print("Distancia percorrida 1: " + str(acelX))
+
+            print("Distancia percorrida 2: %.2f"%acelX)
+            print("Fim")
+            break
+
+    #     if (not flagEmRota) or (not flagCaminhoLivre):
+    #         estadoAtual = estados.calcRota
         
-        elif flagEmRota:
-            estadoAtual = estados.segueRota
+    #     elif flagEmRota:
+    #         estadoAtual = estados.segueRota
 
-    elif estadoAtual == estados.calcRota:
-        while (not flagCaminhoLivre):
-            consultaSensores()
+    # elif estadoAtual == estados.calcRota:
+    #     while (not flagCaminhoLivre):
+    #         consultaSensores()
             
-        determinaRota()
+    #     determinaRota()
 
-        if flagEmRota:
-            estadoAtual = estados.segueRota
+    #     if flagEmRota:
+    #         estadoAtual = estados.segueRota
 
-    elif estadoAtual == estados.segueRota:
-        message_to_motor("f")
-        while(not upReceive):{}
-        setUpRecebido()
+    # elif estadoAtual == estados.segueRota:
+    #     message_to_motor("f")
+    #     while(not upReceive):{}
+    #     setUpRecebido()
 
-        estadoAtual = estados.buscaLocal
+    #     estadoAtual = estados.buscaLocal

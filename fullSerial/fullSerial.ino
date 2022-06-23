@@ -1,11 +1,12 @@
 #include <Ultrasonic.h>
 #include "Adafruit_VL53L0X.h"
-#include "MPU9250.h"
+#include <MPU6050_tockn.h>
+#include <Wire.h>
 int status;
-MPU9250 MPU(Wire, 0x68);
+MPU6050 mpu6050(Wire);
 
 // Limite de aceleração para objeto parado
-#define STOP_OFFSET 0.5
+#define STOP_OFFSET 0.1
 
 // ----- Variáveis globais -----
 float distancia = 0;
@@ -156,15 +157,18 @@ void setup()
     while (!Serial)
     {
     }
-    while (MPU.begin() < 0)
+    Wire.begin();
+    mpu6050.begin();
+    mpu6050.calcGyroOffsets(true);
+    /*while (MPU.begin() < 0)
     {
         Serial.print("Falha de inicialização, confira as conexões. Status: ");
         Serial.println(status);
-    }
+    }*/
     /*while (!Serial1)
     {
     }*/
-    t_amostra = micros();
+    
     pinMode(SHT_LOX1, OUTPUT);
     pinMode(SHT_LOX2, OUTPUT);
 
@@ -302,16 +306,21 @@ float andaParaFrente(float tempo)
 {
     long tempoInicio = millis();
     float distancia = 0;
+    
+    t_amostra = micros();
+    t_parado = 0;
+    
+    parado = true;
+    distx = 0;
+    timer = 0;
 
     while ((millis() - tempoInicio) < tempo)
     {
-        status = MPU.readSensor();
+        mpu6050.update();
 
-        if (status > 0)
-        {
-            float aux_acx = MPU.getAccelY_mss();
-
-            if (fabs(aux_acx) < STOP_OFFSET && abs(long(millis() - t_parado)) > 50)
+        float aux_acx = mpu6050.getAccY();
+        aux_acx *= 9.81;
+            /*if (fabs(aux_acx) < STOP_OFFSET && abs(long(millis() - t_parado)) > 50)
             {
                 parado = true;
 
@@ -327,25 +336,26 @@ float andaParaFrente(float tempo)
             // Se está parado
             if (parado)
             {
-                if (distx != 0.0)
+                /*if (distx != 0.0)
                 {
                     // A função retorna o valor em metros,
                     // então multiplica por 100 para converter para centímetros
                     distancia += distx*100;
                 }
-                distx = 0.0;
-            }
+                distx = 0.0;*/
+            /*}
             // Está se movendo
             else
-            {
+            {*/
                 // Calcula o tempo percorrido
                 t_amostra = micros() - t_amostra;
 
                 distx = calculo_trapezio(distx, aux_acx, t_amostra);
 
                 t_amostra = micros();
-            }
-        }
+           // }
+        //}
     }
-    return distancia;
+    //distancia = 2000.20;
+    return distx*100;
 }

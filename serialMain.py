@@ -5,7 +5,7 @@ import serial
 
 device1 = "/dev/ttyUSB1"
 device2 = "/dev/ttyUSB0"
-obstaculoDist = 60; readDistMin = 0; correcLaser2 = 5
+obstaculoDist = 70; readDistMin = 0; correcLaser2 = 5
 ser = serial.Serial(device1, 115200)
 sermotor = serial.Serial(device2, 115200)
 
@@ -125,7 +125,7 @@ def setAy(valor):
 def message_to_u1():
     ser.write("u1".encode())
     var = ser.readline()
-    print(var)
+    # print(var)
     setU1(float(var))
 
 def message_to_u2():
@@ -150,25 +150,25 @@ def message_to_ga():
 
 def message_to_acelX(tempo):
     comando = "ax" + tempo
-    print(comando)
+    # print(comando)
     comprimido = comando.encode()
-    print(comprimido)
-    print(comando)
+    # print(comprimido)
+    # print(comando)
     ser.write(comando.encode())
     var = ser.readline()
-    print(var)
+    # print(var)
     setAx(float(var))
 
 def message_to_acelY():
     ser.write("ay".encode())
     var = ser.readline()
-    print(var)
+    # print(var)
     setAy(float(ser.readline()))
 
 def message_to_motor(comando):
     sermotor.write(comando.encode())
     var = sermotor.readline()
-    print (var)
+    # print (var)
 
     setUpRecebido()
 # def message_to_gl1():
@@ -275,21 +275,21 @@ while 1:
             setUpRecebido()
             print("resposta motor")
 
-            message_to_acelX("1200")
-            while not upAcelX or flagCaminhoLivre:
-                consultaSensores()
+            # message_to_acelX("1500")
+            # while not upAcelX or flagCaminhoLivre:
+            #     consultaSensores()
 
-            setUpAcelX()
-            message_to_motor("p")
-            while(not upReceive):{}
-            setUpRecebido()
+            # setUpAcelX()
+            # message_to_motor("p")
+            # while(not upReceive):{}
+            # setUpRecebido()
 
-            estadoAtual = estados.calcRota
-            print("Distancia percorrida 1: " + str(acelX))
+            # estadoAtual = estados.calcRota
+            # print("Distancia percorrida 1: " + str(acelX))
 
-            print("Distancia percorrida 2: %.2f"%acelX)
-            print("Fim")
-            break
+            # print("Distancia percorrida 2: %.2f"%acelX)
+            # print("Fim")
+            # break
 
     #     if (not flagEmRota) or (not flagCaminhoLivre):
     #         estadoAtual = estados.calcRota

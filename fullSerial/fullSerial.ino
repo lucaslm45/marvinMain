@@ -2,6 +2,17 @@
 #include "Adafruit_VL53L0X.h"
 #include <MPU6050_tockn.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
+#include <TinyGPS.h>
+
+#define GPS_RX 17
+#define GPS_TX 5
+#define GPS_Serial_Baud 115200
+
+TinyGPS gps;
+
+SoftwareSerial gpsSerial(GPS_RX, GPS_TX);
+
 int status;
 MPU6050 mpu6050(Wire);
 
@@ -20,6 +31,9 @@ bool parado = true;
 // Variavel para guardar a distancia deslocada
 float distx = 0;
 long timer = 0;
+
+bool newData = false;
+unsigned long chars;
 
 // ----- Funções -----
 void setID();
@@ -153,8 +167,12 @@ float calculo_trapezio(float dist, float acel, unsigned long tempo)
 void setup()
 {
     Serial.begin(115200);
+    gpsSerial.begin(GPS_Serial_Baud);
     // Serial1.begin(9600);
     while (!Serial)
+    {
+    }
+    while (!gpsSerial)
     {
     }
     Wire.begin();
@@ -168,7 +186,7 @@ void setup()
     /*while (!Serial1)
     {
     }*/
-    
+
     pinMode(SHT_LOX1, OUTPUT);
     pinMode(SHT_LOX2, OUTPUT);
 
@@ -200,6 +218,25 @@ void loop()
     }
 }
 
+// void readGPS()
+// {
+//     for (unsigned long start = millis(); millis() - start < 1000;)
+//     {
+//         while (gpsSerial.available())
+//         {
+//             char c = gpsSerial.read();
+//             // Serial.write(c); //apague o comentario para mostrar os dados crus
+//             if (gps.encode(c)) // Atribui true para newData caso novos dados sejam recebidos
+//                 newData = true;
+//         }
+//     }
+//     if (newData)
+//     {
+//         unsigned long age;
+//         gps.f_get_position(&flat, &flon, &age);
+//     }
+// }
+
 void definirFuncao(String funcao)
 {
     String retorno = "Erro para " + funcao;
@@ -225,12 +262,34 @@ void definirFuncao(String funcao)
         lox2.rangingTest(&measure2, false);
         distancia = measure2.RangeStatus != 4 ? measure2.RangeMilliMeter / 10 : 666;
         break;
-    case 6:
+    case 6: // latitude
+        float flat, flon;
+        unsigned long age;
+        for (unsigned long start = millis(); millis() - start < 1000;)
+        {
+            while (gpsSerial.available())
+            {
+                char c = gpsSerial.read();
+                // Serial.write(c); //apague o comentario para mostrar os dados crus
+                if (gps.encode(c)) // Atribui true para newData caso novos dados sejam recebidos
+                    newData = true;
+            }
+        }
+        if (newData)
+        {
+            gps.f_get_position(&flat, &flon, &age);
+        }
+        distancia = flat == TinyGPS::GPS_INVALID_F_ANGLE ? 666.0 : flat, 6;
+        // distancia = flat == TinyGPS::GPS_INVALID_F_ANGLE ? 666.0 : flat, 6;
         break;
-    case 7:
+    case 7: // longitude
+        //readGPS();
+        //float flon = 0;
+        distancia = flon == TinyGPS::GPS_INVALID_F_ANGLE ? 666.0 : flon, 6;
         break;
-    case 8:
-        distancia = ultrasonic2.read(CM);
+    case 8: // angulo
+        mpu6050.update();
+        distancia = mpu6050.getAngleZ();
         break;
     case 9:
         // Anda pra frente por x tempo, x = funcao.substring(1).toFloat()
@@ -244,11 +303,11 @@ void definirFuncao(String funcao)
         distancia = ultrasonic2.read(CM);
         break;
     default:
-        Serial.println("Error " + funcao);
+        Serial.println("Sensor Erro " + funcao);
         return;
     }
     // O retorno por terminal precisa ser obrigatoriamente com println, print nao serve
-    Serial.println(distancia);
+    Serial.println(distancia, 6);
 }
 
 int listaFuncao(String comando)
@@ -275,11 +334,11 @@ int listaFuncao(String comando)
     { // laser 2
         return 5;
     }
-    else if (funcao == "gl1")
+    else if (funcao == "g1")
     { // gps latitude
         return 6;
     }
-    else if (funcao == "gl2")
+    else if (funcao == "g2")
     { // gps longitude
         return 7;
     }
@@ -306,10 +365,10 @@ float andaParaFrente(float tempo)
 {
     long tempoInicio = millis();
     float distancia = 0;
-    
+
     t_amostra = micros();
     t_parado = 0;
-    
+
     parado = true;
     distx = 0;
     timer = 0;
@@ -320,42 +379,42 @@ float andaParaFrente(float tempo)
 
         float aux_acx = mpu6050.getAccY();
         aux_acx *= 9.81;
-            /*if (fabs(aux_acx) < STOP_OFFSET && abs(long(millis() - t_parado)) > 50)
-            {
-                parado = true;
+        /*if (fabs(aux_acx) < STOP_OFFSET && abs(long(millis() - t_parado)) > 50)
+        {
+            parado = true;
 
-                t_amostra = micros();
+            t_amostra = micros();
+        }
+        else if (fabs(aux_acx) >= STOP_OFFSET)
+        {
+            t_parado = millis();
+            parado = false;
+        }
+
+        // ----- Calculo da distancia deslocada -----
+        // Se está parado
+        if (parado)
+        {
+            /*if (distx != 0.0)
+            {
+                // A função retorna o valor em metros,
+                // então multiplica por 100 para converter para centímetros
+                distancia += distx*100;
             }
-            else if (fabs(aux_acx) >= STOP_OFFSET)
-            {
-                t_parado = millis();
-                parado = false;
-            }
+            distx = 0.0;*/
+        /*}
+        // Está se movendo
+        else
+        {*/
+        // Calcula o tempo percorrido
+        t_amostra = micros() - t_amostra;
 
-            // ----- Calculo da distancia deslocada -----
-            // Se está parado
-            if (parado)
-            {
-                /*if (distx != 0.0)
-                {
-                    // A função retorna o valor em metros,
-                    // então multiplica por 100 para converter para centímetros
-                    distancia += distx*100;
-                }
-                distx = 0.0;*/
-            /*}
-            // Está se movendo
-            else
-            {*/
-                // Calcula o tempo percorrido
-                t_amostra = micros() - t_amostra;
+        distx = calculo_trapezio(distx, aux_acx, t_amostra);
 
-                distx = calculo_trapezio(distx, aux_acx, t_amostra);
-
-                t_amostra = micros();
-           // }
+        t_amostra = micros();
+        // }
         //}
     }
-    //distancia = 2000.20;
-    return distx*100;
+    // distancia = 2000.20;
+    return distx * 100;
 }

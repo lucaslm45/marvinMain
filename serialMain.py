@@ -3,9 +3,11 @@ from re import A
 import time
 import serial
 
-device1 = "/dev/ttyUSB1"
-device2 = "/dev/ttyUSB0"
-obstaculoDist = 70; readDistMin = 0; correcLaser2 = 5
+# device1 = "/dev/ttyUSB1"
+# device2 = "/dev/ttyUSB0"
+device1 = "/dev/ttyUSB0"
+device2 = "/dev/ttyUSB1"
+obstaculoDist = 55; readDistMin = 0; correcLaser2 = 5
 ser = serial.Serial(device1, 115200)
 sermotor = serial.Serial(device2, 115200)
 
@@ -165,10 +167,27 @@ def message_to_acelY():
     # print(var)
     setAy(float(ser.readline()))
 
+def message_to_gl1(): #latitude
+    ser.write("g1".encode())
+    var = ser.readline()
+    print(var)
+    setUpGl1()
+    # setGl1(float(ser.readline()))
+
+def message_to_gl2(): #longitude
+    ser.write("g2".encode())
+    var = ser.readline()
+    print(var)
+    setUpGl2()
+
+    # setGl2(float(ser.readline()))
+
+
 def message_to_motor(comando):
     sermotor.write(comando.encode())
+    print(comando)
     var = sermotor.readline()
-    # print (var)
+    print (var)
 
     setUpRecebido()
 # def message_to_gl1():
@@ -215,6 +234,19 @@ def consultaSensores():
     setUpL2()
     checkObstaculo()
 
+    message_to_ga()
+    while(not upGa):{}
+    setUpGa()
+
+    # message_to_gl1()
+    # while(not upGl1):{}
+    # setUpGl1()
+
+    # message_to_gl2()
+    # while(not upGl2):{}
+    # setUpGl2()
+
+
     # if not flagCaminhoLivre:
     #     message_to_ga()
     #     while(not upGa):{}
@@ -228,9 +260,9 @@ def checkObstaculo():
     if ((ultrassom1 > readDistMin and ultrassom1 < obstaculoDist) or (ultrassom2 > readDistMin and ultrassom2 < obstaculoDist) or 
         (ultrassom3 > readDistMin and ultrassom3 < obstaculoDist) or (laser1 > readDistMin and laser1 < obstaculoDist) or (laser2 > (readDistMin + correcLaser2) and laser2 < obstaculoDist)):
             flagCaminhoLivre = False
-            message_to_motor("p")
-            while(not upReceive):{}
-            setUpRecebido()
+            # message_to_motor("p")
+            # while(not upReceive):{}
+            # setUpRecebido()
 
 def determinaLocal():
     global flagEmRota
@@ -246,7 +278,7 @@ def determinaRota():
 # def getPosicoes:
 
 # def setPosicoes:
-
+i = 0
 while 1:
     if estadoAtual == estados.waitUser:
         # pega dados da pagina web
@@ -261,19 +293,56 @@ while 1:
         estadoAtual = estados.buscaLocal
     elif estadoAtual == estados.buscaLocal:
         #Set flatCaminhoLivre e para robo se obstaculo detectado
-        print("Consultando Sensores")
+        print("Consultando Sensores: " + str(i))
+        inicio = current_milli_time()
         consultaSensores()
-        print("Sensores Consultados")
+        fim = current_milli_time()
+        # print("Sensores Consultados")
+        i+=1
 
-        # determinaLocal()
-        print(flagCaminhoLivre)
+        print("Tempo para leitura de todos os sensores: " + str(fim - inicio) + " ms")
+        print("CaminhoLivre: " + str(flagCaminhoLivre))
 
-        if flagCaminhoLivre:
-            print("enviando para motor")
-            message_to_motor("f")
-            while(not upReceive):{}
-            setUpRecebido()
-            print("resposta motor")
+        # if flagCaminhoLivre:
+            # print("enviando para motor")
+            # # message_to_motor("f")
+            # while(not upReceive):{}
+            # setUpRecebido()
+            # # print("resposta motor")
+
+        print("Ultrassom1: " + str(ultrassom1))
+        print("Ultrassom2: " + str(ultrassom2))
+        print("Ultrassom3: " + str(ultrassom3))
+
+        print("Laser1: " + str(laser1))
+        print("Laser2: " + str(laser2))
+
+        print("Angulo: " + str(angle))
+
+        # print("Latitude: " + str(latitude))
+        # print("Longitude: " + str(longitude))
+
+        value = abs(600)
+        message_to_motor("d"+str(value))
+        while(not upReceive):{}
+        setUpRecebido()
+        # time.sleep(3)
+        message_to_motor("p")
+        while(not upReceive):{}
+        setUpRecebido()
+        time.sleep(2)
+
+        value = abs(1100)
+        message_to_motor("e"+str(value))
+        while(not upReceive):{}
+        setUpRecebido()
+        # time.sleep(3)
+        message_to_motor("p")
+        while(not upReceive):{}
+        setUpRecebido()
+        break
+
+
 
             # message_to_acelX("1500")
             # while not upAcelX or flagCaminhoLivre:

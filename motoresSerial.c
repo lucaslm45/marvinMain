@@ -32,12 +32,12 @@
 #define delaySen 800
 
 // --- Variáveis Globais ---
-short usSpeed = 90;      // default motor speed
-short usSpeedGiro = 185; // default motor speed Giro
-short magicWheel1 = 1;
-short magicWheel2 = 1;
-short magicWheel3 = 1.2;
-short magicWheel4 = 1.2;
+float usSpeed = 90;      // default motor speed
+float usSpeedGiro = 200; // default motor speed Giro
+float magicWheel1 = 1;
+float magicWheel2 = 1;
+float magicWheel3 = 1;
+float magicWheel4 = 1;
 float distancia = 0;
 String messageTemp = "";
 char c;
@@ -57,7 +57,7 @@ void reconnect();
 void moverRobo(String funcao);
 int listaFuncao(String comando);
 float tempoDeCurva(float angulo);
-long timeStandy = 200000;
+long timeStandy = 1000;
 
 unsigned char velocidade = 0x00; // armazena a velocidade dos motores (8 bits)
 long inicioLaco;
@@ -96,9 +96,9 @@ void loop()
     }
     if (messageTemp.length() > 0)
     {
-        inicioLaco = millis();
         moverRobo(messageTemp);
         messageTemp = "";
+        inicioLaco = millis();
     }
     if (millis() - inicioLaco > timeStandy)
     {
@@ -108,10 +108,8 @@ void loop()
 
 void moverRobo(String funcao)
 {
-    String retorno = "Erro para " + funcao;
-    bool setUp = true;
-
-    switch (listaFuncao(funcao))
+    int choice = listaFuncao(funcao);
+    switch (choice)
     { // decide o comando de acordo com a requisição
     case 1:
         robot_stop();
@@ -128,11 +126,37 @@ void moverRobo(String funcao)
     case 5:
         robot_left(funcao.substring(1).toFloat());
         break;
+    case 6:
+        usSpeed = funcao.substring(1).toFloat();
+        usMotor_Status = CCW;
+        break;
+    case 7:
+        magicWheel1 = funcao.substring(1).toFloat();
+        break;
+    case 8:
+        magicWheel2 = funcao.substring(1).toFloat();
+        break;
+    case 9:
+        magicWheel3 = funcao.substring(1).toFloat();
+        break;
+    case 10:
+        magicWheel4 = funcao.substring(1).toFloat();
+        break;
+    case 11:
+        usSpeedGiro = funcao.substring(1).toFloat();
+        break;    
     default:
         Serial.println("Motor Erro" + funcao);
         return;
     }
-    Serial.println("OK");
+    if(choice != 6)
+    {
+        Serial.println("OK");
+    }
+    else
+    {
+        Serial.println(usSpeed);
+    }
 }
 int listaFuncao(String comando)
 {
@@ -157,19 +181,40 @@ int listaFuncao(String comando)
     { // esquerda
         return 5;
     }
+    else if (funcao == "v")
+    { //velocidade
+        return 6;
+    }
+    else if (funcao == "1")
+    { // magicWheel1
+        return 7;
+    }
+    else if (funcao == "2")
+    { // magicWheel2
+        return 8;
+    }
+    else if (funcao == "3")
+    { // magicWheel3
+        return 9;
+    }
+    else if (funcao == "4")
+    { // magicWheel4
+        return 10;
+    }
+    else if (funcao == "g")
+    { // speedGiro
+        return 11;
+    }
 
     return 0; // requisição inválida
 }
 void robot_forward()
 {
-    if (usMotor_Status != CW)
-    {
-        usMotor_Status = CW;
-        motorGo(MOTOR_1, usMotor_Status, usSpeed);
-        motorGo(MOTOR_2, usMotor_Status, usSpeed);
-        motorGo(MOTOR_3, usMotor_Status, usSpeed);
-        motorGo(MOTOR_4, usMotor_Status, usSpeed);
-    }
+    usMotor_Status = CW;
+    motorGo(MOTOR_1, usMotor_Status, usSpeed);
+    motorGo(MOTOR_2, usMotor_Status, usSpeed);
+    motorGo(MOTOR_3, usMotor_Status, usSpeed);
+    motorGo(MOTOR_4, usMotor_Status, usSpeed);
 
 } // end robot forward
 
@@ -177,11 +222,14 @@ void robot_backward()
 {
     stopSeguro();
 
-    usMotor_Status = CCW;
-    motorGo(MOTOR_1, usMotor_Status, usSpeed);
-    motorGo(MOTOR_2, usMotor_Status, usSpeed);
-    motorGo(MOTOR_3, usMotor_Status, usSpeed);
-    motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    if (usMotor_Status != CCW)
+    {
+        usMotor_Status = CCW;
+        motorGo(MOTOR_1, usMotor_Status, usSpeed);
+        motorGo(MOTOR_2, usMotor_Status, usSpeed);
+        motorGo(MOTOR_3, usMotor_Status, usSpeed);
+        motorGo(MOTOR_4, usMotor_Status, usSpeed);
+    }
 
 } // end robot backward
 void robot_right(float angulo)

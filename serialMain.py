@@ -7,7 +7,13 @@ import serial
 # device2 = "/dev/ttyUSB0"
 device1 = "/dev/ttyUSB0"
 device2 = "/dev/ttyUSB1"
-obstaculoDist = 55; readDistMin = 0; correcLaser2 = 5
+obstaculoDist = 80+50; readDistMin = 0; correcLaser2 = 5
+obstaculoDistLateral = 100+30
+obstaculo = 60
+obstaculoLateral = 75
+speedRobo = 60
+
+
 ser = serial.Serial(device1, 115200)
 sermotor = serial.Serial(device2, 115200)
 
@@ -208,7 +214,7 @@ def consultaSensores():
     global flagCaminhoLivre
     flagCaminhoLivre = True
 
-# Consultando Ultrassons
+    # Consultando Ultrassons
     message_to_u1()
     while(not upU1):{}
     setUpU1()
@@ -224,19 +230,21 @@ def consultaSensores():
     setUpU3()
     checkObstaculo()
 
-    message_to_l1()
-    while(not upL1):{}
-    setUpL1()
-    checkObstaculo()
+# Consultando Lasers
+    # message_to_l1()
+    # while(not upL1):{}
+    # setUpL1()
+    # checkObstaculo()
 
-    message_to_l2()
-    while(not upL2):{}
-    setUpL2()
-    checkObstaculo()
+    # message_to_l2()
+    # while(not upL2):{}
+    # setUpL2()
+    # checkObstaculo()
 
-    message_to_ga()
-    while(not upGa):{}
-    setUpGa()
+# # Consultando Angulo
+#     message_to_ga()
+#     while(not upGa):{}
+#     setUpGa()
 
     # message_to_gl1()
     # while(not upGl1):{}
@@ -257,12 +265,24 @@ def consultaSensores():
         
 def checkObstaculo():
     global flagCaminhoLivre
-    if ((ultrassom1 > readDistMin and ultrassom1 < obstaculoDist) or (ultrassom2 > readDistMin and ultrassom2 < obstaculoDist) or 
-        (ultrassom3 > readDistMin and ultrassom3 < obstaculoDist) or (laser1 > readDistMin and laser1 < obstaculoDist) or (laser2 > (readDistMin + correcLaser2) and laser2 < obstaculoDist)):
-            flagCaminhoLivre = False
-            # message_to_motor("p")
-            # while(not upReceive):{}
-            # setUpRecebido()
+    if((ultrassom1 >= readDistMin and ultrassom1 <= obstaculoLateral) or (ultrassom2 >= readDistMin and ultrassom2 <= obstaculo) or 
+        (ultrassom3 >= readDistMin and ultrassom3 <= obstaculoLateral)):# or (laser1 >= readDistMin and laser1 <= obstaculo) or (laser2 >= (readDistMin + correcLaser2) and laser2 <= obstaculo)):
+        flagCaminhoLivre = False
+        message_to_motor("p")
+        while(not upReceive):{}
+        setUpRecebido()
+        
+        
+    # elif((ultrassom1 >= readDistMin and ultrassom1 <= obstaculoDistLateral) or (ultrassom2 >= readDistMin and ultrassom2 <= obstaculoDist) or 
+    #     (ultrassom3 >= readDistMin and ultrassom3 <= obstaculoDistLateral)):
+
+    # # elif ((ultrassom2 >= readDistMin and ultrassom2 <= obstaculoDist)):# and (laser1 >= readDistMin and laser1 <= obstaculoDist)):
+    #     distancia = min(ultrassom1, ultrassom2)
+    #     distancia = min(distancia, ultrassom3)
+    #     distancia = distancia*speedRobo/(obstaculoDistLateral)# + laser1)/2 #media central
+    #     message_to_motor("v"+str(distancia))
+    #     while(not upReceive):{}
+    #     setUpRecebido()
 
 def determinaLocal():
     global flagEmRota
@@ -274,11 +294,23 @@ def determinaRota():
     #faz alguma coisa
     flagEmRota = True #or False
 
+def setSpeeds():
+    message_to_motor("v"+str(speedRobo))
+    while(not upReceive):{}
+    setUpRecebido()
 
-# def getPosicoes:
+    value = 1.7
+    message_to_motor("3"+str(value))
+    while(not upReceive):{}
+    setUpRecebido()
 
-# def setPosicoes:
+    value = 1.7
+    message_to_motor("4"+str(value))
+    while(not upReceive):{}
+    setUpRecebido()
+
 i = 0
+setSpeeds()
 while 1:
     if estadoAtual == estados.waitUser:
         # pega dados da pagina web
@@ -302,45 +334,63 @@ while 1:
 
         print("Tempo para leitura de todos os sensores: " + str(fim - inicio) + " ms")
         print("CaminhoLivre: " + str(flagCaminhoLivre))
+        
 
-        # if flagCaminhoLivre:
-            # print("enviando para motor")
-            # # message_to_motor("f")
-            # while(not upReceive):{}
-            # setUpRecebido()
-            # # print("resposta motor")
+        if flagCaminhoLivre:
+            print("enviando para motor")
+            message_to_motor("f")
+            while(not upReceive):{}
+            setUpRecebido()
+            print("resposta motor")
 
         print("Ultrassom1: " + str(ultrassom1))
         print("Ultrassom2: " + str(ultrassom2))
         print("Ultrassom3: " + str(ultrassom3))
 
-        print("Laser1: " + str(laser1))
-        print("Laser2: " + str(laser2))
+        # print("Laser1: " + str(laser1))
+        # print("Laser2: " + str(laser2))
 
-        print("Angulo: " + str(angle))
+        # print("Angulo: " + str(angle))
 
+        if(not flagCaminhoLivre):
+            estadoAtual = estados.calcRota
+
+
+    elif estadoAtual == estados.calcRota:
+        consultaSensores()
+        print("Ultrassom1: " + str(ultrassom1))
+        print("Ultrassom2: " + str(ultrassom2))
+        print("Ultrassom3: " + str(ultrassom3))
+        distancia = min(ultrassom1, ultrassom2)
+        distancia = min(distancia, ultrassom3)
+
+        if(distancia > obstaculoLateral+2):
+            estadoAtual = estados.buscaLocal
+
+        # if not flagCaminhoLivre:
+        #     break
         # print("Latitude: " + str(latitude))
         # print("Longitude: " + str(longitude))
 
-        value = abs(600)
-        message_to_motor("d"+str(value))
-        while(not upReceive):{}
-        setUpRecebido()
-        # time.sleep(3)
-        message_to_motor("p")
-        while(not upReceive):{}
-        setUpRecebido()
-        time.sleep(2)
+        # value = abs(600)
+        # message_to_motor("d"+str(value))
+        # while(not upReceive):{}
+        # setUpRecebido()
+        # # time.sleep(3)
+        # message_to_motor("p")
+        # while(not upReceive):{}
+        # setUpRecebido()
+        # time.sleep(2)
 
-        value = abs(1100)
-        message_to_motor("e"+str(value))
-        while(not upReceive):{}
-        setUpRecebido()
-        # time.sleep(3)
-        message_to_motor("p")
-        while(not upReceive):{}
-        setUpRecebido()
-        break
+        # value = abs(1100)
+        # message_to_motor("e"+str(value))
+        # while(not upReceive):{}
+        # setUpRecebido()
+        # # time.sleep(3)
+        # message_to_motor("p")
+        # while(not upReceive):{}
+        # setUpRecebido()
+        # break
 
 
 

@@ -241,10 +241,10 @@ def consultaSensores():
     # setUpL2()
     # checkObstaculo()
 
-# # Consultando Angulo
-#     message_to_ga()
-#     while(not upGa):{}
-#     setUpGa()
+# Consultando Angulo
+    message_to_ga()
+    while(not upGa):{}
+    setUpGa()
 
     # message_to_gl1()
     # while(not upGl1):{}
@@ -346,12 +346,12 @@ while 1:
         print("CaminhoLivre: " + str(flagCaminhoLivre))
         
 
-        if flagCaminhoLivre:
-            print("enviando para motor")
-            message_to_motor("f")
-            while(not upReceive):{}
-            setUpRecebido()
-            print("resposta motor")
+        # if flagCaminhoLivre:
+        #     print("enviando para motor")
+        #     message_to_motor("f")
+        #     while(not upReceive):{}
+        #     setUpRecebido()
+        #     print("resposta motor")
 
         print("Ultrassom1: " + str(ultrassom1))
         print("Ultrassom2: " + str(ultrassom2))
@@ -360,22 +360,23 @@ while 1:
         # print("Laser1: " + str(laser1))
         # print("Laser2: " + str(laser2))
 
-        # print("Angulo: " + str(angle))
+        print("Angulo: " + str(angle))
+        time.sleep(.1)
 
-        if(not flagCaminhoLivre):
-            estadoAtual = estados.calcRota
+    #     if(not flagCaminhoLivre):
+    #         estadoAtual = estados.calcRota
 
 
-    elif estadoAtual == estados.calcRota:
-        consultaSensores()
-        print("Ultrassom1: " + str(ultrassom1))
-        print("Ultrassom2: " + str(ultrassom2))
-        print("Ultrassom3: " + str(ultrassom3))
-        distancia = min(ultrassom1, ultrassom2)
-        distancia = min(distancia, ultrassom3)
+    # elif estadoAtual == estados.calcRota:
+    #     consultaSensores()
+    #     print("Ultrassom1: " + str(ultrassom1))
+    #     print("Ultrassom2: " + str(ultrassom2))
+    #     print("Ultrassom3: " + str(ultrassom3))
+    #     distancia = min(ultrassom1, ultrassom2)
+    #     distancia = min(distancia, ultrassom3)
 
-        if(distancia > obstaculoLateral+5):
-            estadoAtual = estados.buscaLocal
+    #     if(distancia > obstaculoLateral+5):
+    #         estadoAtual = estados.buscaLocal
 
         # if not flagCaminhoLivre:
         #     break
